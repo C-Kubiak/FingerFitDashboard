@@ -12,12 +12,11 @@ import {
     getDoc 
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-// Firebase configuration - replace with your project's config
-// Get this from Firebase Console > Project Settings > General > Your apps
+// Firebase configuration
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-    projectId: "YOUR_PROJECT_ID",
+    apiKey: "AIzaSyCynNZ2XC9B4L8PFrQVEU6xjuUsJR7ZMm0",
+    authDomain: "fingerfitstats.firebaseapp.com",
+    projectId: "fingerfitstats",
 };
 
 // Initialize Firebase
