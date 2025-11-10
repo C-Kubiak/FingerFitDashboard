@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FingerFit Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Login Screen -->
+        <div id="loginScreen" class="card">
+            <h1>FingerFit Dashboard</h1>
+            <p class="subtitle">Sign in to view your gameplay stats</p>
+            
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" required autocomplete="email">
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required autocomplete="current-password">
+                </div>
+                
+                <button type="submit" id="loginBtn" class="btn btn-primary">Sign In</button>
+                
+                <div id="loginError" class="error-message"></div>
+            </form>
+        </div>
+
+        <!-- Dashboard Screen -->
+        <div id="dashboardScreen" class="card hidden">
+            <div class="dashboard-header">
+                <h1>Your Stats</h1>
+                <button id="logoutBtn" class="btn btn-secondary">Logout</button>
+            </div>
+            
+            <div class="user-info">
+                <p>Logged in as: <strong id="userEmail"></strong></p>
+            </div>
+            
+            <div id="statsContainer">
+                <div id="loadingMessage" class="loading">Loading stats...</div>
+                <div id="statsContent" class="stats-grid hidden"></div>
+                <div id="noStatsMessage" class="no-stats hidden">No stats found.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script type="module" src="script.js"></script>
+</body>
+</html>
+
