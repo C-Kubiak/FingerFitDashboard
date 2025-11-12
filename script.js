@@ -34,31 +34,37 @@ const loginBtn = document.getElementById('loginBtn');
 const loginError = document.getElementById('loginError');
 const logoutBtn = document.getElementById('logoutBtn');
 const userEmail = document.getElementById('userEmail');
-const statsContainer = document.getElementById('statsContainer');
 const loadingMessage = document.getElementById('loadingMessage');
 const statsContent = document.getElementById('statsContent');
 const noStatsMessage = document.getElementById('noStatsMessage');
 
-// Handle login form submission
+// KPI & chart hooks
+const kpiRow = document.getElementById('kpiRow');
+const kpiAvgWpm = document.getElementById('kpiAvgWpm');
+const kpiAcc = document.getElementById('kpiAcc');
+const kpiGames = document.getElementById('kpiGames');
+const kpiLast = document.getElementById('kpiLast');
+
+const chartsGrid = document.getElementById('chartsGrid');
+const lineChart = document.getElementById('lineChart');
+const lineSubtitle = document.getElementById('lineSubtitle');
+const barChart = document.getElementById('barChart');
+const allFieldsWrap = document.getElementById('allFieldsWrap');
+
+// login form submission
 loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    
     const email = emailInput.value.trim();
     const password = passwordInput.value;
-    
-    // Clear previous errors
     hideError();
-    
-    // Disable button during login
     loginBtn.disabled = true;
     loginBtn.textContent = 'Signing in...';
-    
     try {
         // Sign in with Firebase Auth
         await signInWithEmailAndPassword(auth, email, password);
         // onAuthStateChanged will handle UI update
     } catch (error) {
-        // Handle login errors
+        // login errors
         showError(getErrorMessage(error.code));
         loginBtn.disabled = false;
         loginBtn.textContent = 'Sign In';
@@ -79,11 +85,9 @@ logoutBtn.addEventListener('click', async () => {
 // Monitor authentication state changes
 onAuthStateChanged(auth, (user) => {
     if (user) {
-        // User is signed in
         showDashboard(user);
         loadUserStats(user.uid);
     } else {
-        // User is signed out
         showLogin();
     }
 });
@@ -107,7 +111,10 @@ function showDashboard(user) {
 async function loadUserStats(uid) {
     // Show loading state
     loadingMessage.classList.remove('hidden');
-    statsContent.classList.add('hidden');
+    statsContent.innerHTML = '';
+    kpiRow.classList.add('hidden');
+    chartsGrid.classList.add('hidden');
+    allFieldsWrap.classList.add('hidden');
     noStatsMessage.classList.add('hidden');
     
     try {
@@ -116,129 +123,91 @@ async function loadUserStats(uid) {
         // The stats are stored as a field in this document
         // If your Firestore structure uses a subcollection (users/{uid}/stats/{docId}),
         // modify this code to use: doc(db, 'users', uid, 'stats', 'yourDocId')
-        const userRef = doc(db, 'users', uid);   // get the user document from Firestore
-        const userSnap = await getDoc(userRef);  // wait until it loads
-
-        // Check if the document actually exists
-        if (userSnap.exists()) {
-            const userData = userSnap.data();  // get the user data from Firestore
-
-            // Check if userData has a stats object
-            if (userData.stats && typeof userData.stats === 'object') {
-                // Try to find a sessions array inside stats
-                const sessions = Array.isArray(userData.stats.sessions) ? userData.stats.sessions : [];
-
-                // Hide the "loading" message
-                loadingMessage.classList.add('hidden');
-
-                // If there are sessions, show the charts
-                if (sessions.length) {
-                    statsContent.classList.remove('hidden');
-                    renderProgress(sessions); // <-- new chart function (shows graphs)
-                } 
-                // If there are no sessions, show normal stats instead
-                else {
-                    statsContent.classList.remove('hidden');
-                    displayStats(userData.stats);
-                }
-            } 
-            // If there is no stats object in Firestore
-            else {
-                loadingMessage.classList.add('hidden');
-                noStatsMessage.classList.remove('hidden');  // show "No stats found"
-            }
-        } 
-        // If the user document does not exist
-        else {
+        const userRef = doc(db, 'users', uid);
+        const userSnap = await getDoc(userRef);
+        
+        if (!userSnap.exists()) {
             loadingMessage.classList.add('hidden');
             noStatsMessage.classList.remove('hidden');
+            return;
         }
-    } 
-    // If something goes wrong while getting the data
-    catch (error) {
+
+        const userData = userSnap.data();
+        // Check if stats field exists in the user document
+        // The stats field contains all the gameplay statistics
+        const stats = (userData && userData.stats && typeof userData.stats === 'object') ? userData.stats : null;
+        if (!stats) {
+            loadingMessage.classList.add('hidden');
+            noStatsMessage.classList.remove('hidden');
+            return;
+        }
+
+        displayStats(stats);
+    } catch (error) {
         console.error('Error loading stats:', error);
         loadingMessage.classList.add('hidden');
-        showError('Failed to load stats. Please refresh the page.'); // show error message
+        showError('Failed to load stats. Please refresh the page.');
     }
 }
 
-// Display stats in the dashboard
-function displayStats(statsData) {
-    // Hide loading, show stats
+// Display stats in the dashboard (clean version)
+function displayStats(stats) {
     loadingMessage.classList.add('hidden');
-    statsContent.classList.remove('hidden');
-    
-    // Clear previous stats
-    statsContent.innerHTML = '';
-    
-    // Iterate through all key-value pairs in the stats document
-    const entries = Object.entries(statsData);
-    
-    if (entries.length === 0) {
-        noStatsMessage.classList.remove('hidden');
-        statsContent.classList.add('hidden');
-        return;
+
+    // KPIs
+    const avgWpm = num(stats.averageWpm);
+    const acc = pct(stats.averageAccuracy);
+    const games = int(stats.totalGamesPlayed);
+    const lastPlayed = toDateTime(stats.lastPlayed);
+
+    kpiAvgWpm.textContent = isNaN(avgWpm) ? '—' : avgWpm.toFixed(1);
+    kpiAcc.textContent = isNaN(acc) ? '—' : `${acc.toFixed(1)}%`;
+    kpiGames.textContent = isNaN(games) ? '—' : games.toLocaleString();
+    kpiLast.textContent = lastPlayed || '—';
+    kpiRow.classList.remove('hidden');
+
+    // Charts
+    buildCharts(stats);
+
+    // Collapsible “All fields”
+    const entries = Object.entries(stats);
+    if (entries.length) {
+        entries.sort(([a],[b]) => a.localeCompare(b));
+        entries.forEach(([key, value]) => {
+            const statItem = document.createElement('div');
+            statItem.className = 'stat-item';
+            const label = document.createElement('div');
+            label.className = 'stat-label';
+            label.textContent = formatLabel(key);
+            const statValue = document.createElement('div');
+            statValue.className = 'stat-value';
+            statValue.textContent = formatValue(value, key);
+            statItem.appendChild(label);
+            statItem.appendChild(statValue);
+            statsContent.appendChild(statItem);
+        });
+        allFieldsWrap.classList.remove('hidden');
     }
-    
-    // Create stat items for each key-value pair
-    entries.forEach(([key, value]) => {
-        const statItem = document.createElement('div');
-        statItem.className = 'stat-item';
-        
-        const label = document.createElement('div');
-        label.className = 'stat-label';
-        label.textContent = formatLabel(key);
-        
-        const statValue = document.createElement('div');
-        statValue.className = 'stat-value';
-        statValue.textContent = formatValue(value);
-        
-        statItem.appendChild(label);
-        statItem.appendChild(statValue);
-        statsContent.appendChild(statItem);
-    });
 }
 
-// Format stat label (convert camelCase to Title Case)
 function formatLabel(key) {
-    return key
-        .replace(/([A-Z])/g, ' $1')
-        .replace(/^./, str => str.toUpperCase())
-        .trim();
+    return key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()).trim();
 }
-
-// Format stat value based on type
-function formatValue(value) {
+function formatValue(value, key = "") {
+    if (value === null || value === undefined) return 'N/A';
+    if (/(lastPlayed|birthday)/i.test(key)) return toDateTime(value) || 'N/A';
     if (typeof value === 'number') {
-        // Format numbers with commas if needed
-        if (Number.isInteger(value)) {
-            return value.toLocaleString();
-        } else {
-            // Round decimals to 2 places
-            return parseFloat(value.toFixed(2)).toLocaleString();
-        }
+        if (/reactionTime/i.test(key)) return `${value.toFixed(2)}`;
+        if (/accuracy/i.test(key)) return `${pct(value).toFixed(2)}`;
+        if (/wpm/i.test(key)) return value.toFixed(2);
+        if (Number.isInteger(value)) return value.toLocaleString();
+        return parseFloat(value.toFixed(2)).toLocaleString();
     }
-    if (typeof value === 'boolean') {
-        return value ? 'Yes' : 'No';
-    }
-    if (value === null || value === undefined) {
-        return 'N/A';
-    }
+    if (typeof value === 'boolean') return value ? 'Yes' : 'No';
     return String(value);
 }
-
-// Show error message
-function showError(message) {
-    loginError.textContent = message;
-    loginError.classList.add('show');
-}
-
-// Hide error message
-function hideError() {
-    loginError.classList.remove('show');
-}
-
-// Convert Firebase error codes to user-friendly messages
+function showError(message) { loginError.textContent = message; loginError.classList.add('show'); }
+function hideError() { loginError.classList.remove('show'); }
 function getErrorMessage(errorCode) {
     const errorMessages = {
         'auth/invalid-email': 'Invalid email address.',
@@ -249,126 +218,165 @@ function getErrorMessage(errorCode) {
         'auth/too-many-requests': 'Too many failed attempts. Please try again later.',
         'auth/network-request-failed': 'Network error. Please check your connection.',
     };
-    
     return errorMessages[errorCode] || 'An error occurred. Please try again.';
 }
-// ===== Charts and table visualizations =====
 
-// Helper to make SVG elements
-function svg(tag, attrs={}) {
-  const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
-  for (const [k,v] of Object.entries(attrs)) el.setAttribute(k,v);
-  return el;
+// ===== tiny charting + data =====
+function pct(v) { if (v === null || v === undefined) return NaN; const n=Number(v); return n<=1? n*100 : n; }
+function num(v) { return Number(v); }
+function int(v) { return Number.isFinite(+v) ? Math.trunc(+v) : NaN; }
+
+function toDate(value) {
+    try {
+        if (typeof value === 'number') return new Date(value > 1e12 ? value : value * 1000);
+        const d = new Date(String(value));
+        return isNaN(d.getTime()) ? null : d;
+    } catch { return null; }
+}
+function toDateTime(value) {
+    const d = toDate(value);
+    return d ? d.toISOString().slice(0,19).replace('T',' ') : null;
+}
+function normalizeSeries(maybe) {
+    if (!maybe) return [];
+    if (Array.isArray(maybe)) {
+        if (maybe.length && typeof maybe[0] === 'number') {
+            return maybe.map((y, i) => ({ x: i + 1, y: Number(y) }));
+        }
+        return maybe.map((p, i) => {
+            const x = p.t ?? p.x ?? i + 1;
+            const y = p.v ?? p.y ?? 0;
+            return { x, y: Number(y) };
+        });
+    }
+    if (typeof maybe === 'object') {
+        return Object.keys(maybe).sort().map(k => ({ x: k, y: Number(maybe[k]) }));
+    }
+    return [];
 }
 
-// Format percent display
-function pct(p){ return p==null ? "—" : `${Math.round(Number(p)*100)}%`; }
+function renderLine(el, series, {
+    height = 240, color = '#1d4ed8', fill = 'rgba(29,78,216,0.15)', pad = 44, dotR = 5
+} = {}) {
+    if (!el) return;
+    el.innerHTML = '';
+    if (!series.length) { el.innerHTML = `<div class="chart-empty">No history yet</div>`; return; }
 
-// Build the charts + table area
-function renderProgress(sessions){
-  statsContent.innerHTML = "";
-  const wrap = document.createElement("div");
-  wrap.style.display = "grid";
-  wrap.style.gap = "10px";
-  statsContent.appendChild(wrap);
+    const width = el.clientWidth || 640;
+    const ys = series.map(p => p.y);
+    const min = Math.min(...ys);
+    const max = Math.max(...ys);
+    const niceMin = Math.floor(min);
+    const niceMax = Math.ceil(max);
+    const range = (niceMax - niceMin) || 1;
 
-  wrap.appendChild(title("WPM Over Time"));
-  wrap.appendChild(wpmLine(sessions));
+    const stepX = (width - pad * 2) / Math.max(1, series.length - 1);
+    const scaleY = v => height - pad - ((v - niceMin) / range) * (height - pad * 2);
 
-  wrap.appendChild(title("Accuracy & Errors"));
-  wrap.appendChild(accErrBars(sessions));
+    const pts = series.map((p, i) => [pad + i * stepX, scaleY(p.y)]);
+    const d = pts.map((p,i) => i ? `L ${p[0]} ${p[1]}` : `M ${p[0]} ${p[1]}`).join(' ');
+    const area = `${d} L ${pad + (series.length-1)*stepX} ${height-pad} L ${pad} ${height-pad} Z`;
 
-  wrap.appendChild(title("Session Details"));
-  wrap.appendChild(tableSimple(sessions));
+    const ticks = 5;
+    const yTicks = Array.from({length: ticks+1}, (_,i)=>niceMin + (range)*i/ticks)
+        .map(v => {
+            const y = scaleY(v);
+            return `
+                <line x1="${pad}" y1="${y}" x2="${width-pad}" y2="${y}" stroke="#e5e7eb"/>
+                <text x="${pad - 10}" y="${y+6}" text-anchor="end" font-size="15" fill="#111827" font-weight="900">${v.toFixed(0)}</text>
+            `;
+        }).join('');
+
+    const xLabels = [0, Math.floor((series.length-1)/2), series.length-1]
+        .filter((v,i,a)=>a.indexOf(v)===i)
+        .map(i => {
+            const x = pad + i * stepX;
+            const lab = String(series[i].x);
+            return `<text x="${x}" y="${height - pad + 28}" text-anchor="middle" font-size="14" fill="#111827" font-weight="900">${lab}</text>`;
+        }).join('');
+
+    const dots = pts.map(([x,y]) => `<circle cx="${x}" cy="${y}" r="${dotR}" fill="#ffffff" stroke="${color}" stroke-width="4"></circle>`).join('');
+
+    el.innerHTML = `
+      <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true">
+        ${yTicks}
+        <line x1="${pad}" y1="${height - pad}" x2="${width - pad}" y2="${height - pad}" stroke="#cbd5e1"/>
+        ${xLabels}
+        <path d="${area}" fill="${fill}" />
+        <path d="${d}" fill="none" stroke="${color}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+        ${dots}
+      </svg>
+    `;
 }
 
-// Simple section title
-function title(t){
-  const h=document.createElement("h2");
-  h.textContent=t;
-  h.style.fontSize="18px";
-  h.style.color="#333";
-  return h;
+function renderBars(el, labels, values, {
+    height = 240, color = '#7c3aed', pad = 44, gap = 16, textColor = '#111827'
+} = {}) {
+    if (!el) return;
+    el.innerHTML = '';
+    if (!labels.length || labels.length !== values.length) { el.innerHTML = `<div class="chart-empty">No session data yet</div>`; return; }
+
+    const width = el.clientWidth || 640;
+    const max = Math.max(...values, 1);
+    const barWidth = (width - pad * 2 - gap * (labels.length - 1)) / labels.length;
+
+    const ticks = 4;
+    const yTicks = Array.from({length: ticks+1}, (_,i)=> (max/ticks)*i)
+        .map(v => {
+            const y = height - pad - (v / max) * (height - pad * 2);
+            return `
+                <line x1="${pad}" y1="${y}" x2="${width-pad}" y2="${y}" stroke="#e5e7eb"/>
+                <text x="${pad - 10}" y="${y+6}" text-anchor="end" font-size="15" fill="#111827" font-weight="900">${Math.round(v)}</text>
+            `;
+        }).join('');
+
+    const bars = values.map((v, i) => {
+        const x = pad + i * (barWidth + gap);
+        const h = (v / max) * (height - pad * 2);
+        const y = height - pad - h;
+        const label = labels[i];
+        return `
+            <rect x="${x}" y="${y}" width="${barWidth}" height="${h}" rx="10" fill="${color}" />
+            <text x="${x + barWidth/2}" y="${y - 10}" text-anchor="middle" font-size="18" fill="${textColor}" font-weight="900">${v}</text>
+            <text x="${x + barWidth/2}" y="${height - pad + 30}" text-anchor="middle" font-size="15" fill="#111827" font-weight="900">${label}</text>
+        `;
+    }).join('');
+
+    el.innerHTML = `
+      <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true">
+        ${yTicks}
+        <line x1="${pad}" y1="${height - pad}" x2="${width - pad}" y2="${height - pad}" stroke="#cbd5e1"/>
+        ${bars}
+      </svg>
+    `;
 }
 
-// Table of all sessions
-function tableSimple(rows){
-  const t=document.createElement("table");
-  t.className="data-table";
-  t.innerHTML = `
-    <thead><tr><th>Date</th><th>WPM</th><th>Accuracy</th><th>Reaction</th><th>Errors</th></tr></thead>
-    <tbody>${rows.map(r=>`
-      <tr>
-        <td>${r.date??""}</td>
-        <td>${r.wpm??""}</td>
-        <td>${pct(r.accuracy)}</td>
-        <td>${r.reactionMs!=null ? (r.reactionMs/1000).toFixed(1)+'s' : '—'}</td>
-        <td>${r.errors??""}</td>
-      </tr>
-    `).join("")}</tbody>`;
-  return t;
-}
+function buildCharts(stats) {
+    const wpmSeries = normalizeSeries(
+        stats.wpmHistory || stats.wpmByDate || stats.wpmSeries || null
+    );
+    const accSeries = normalizeSeries(
+        stats.accuracyHistory || stats.accuracyByDate || stats.accuracySeries || null
+    ).map(p => ({ x: p.x, y: pct(p.y) }));
 
-// Line chart for WPM
-function wpmLine(rows){
-  const w=600,h=220,p=28;
-  const el=svg("svg",{viewBox:`0 0 ${w} ${h}`});
-  if(!rows.length) return el;
+    let lineData = wpmSeries.length ? wpmSeries
+                 : accSeries.length ? accSeries
+                 : (Number.isFinite(stats.averageWpm) ? [{x:'Now', y:Number(stats.averageWpm)}] : []);
 
-  const xs=rows.map(r=>new Date(r.date).getTime());
-  const ys=rows.map(r=>Number(r.wpm||0));
-  const x0=Math.min(...xs), x1=Math.max(...xs);
-  const y0=Math.min(...ys), y1=Math.max(...ys);
-  const sx=t=>p+((t-x0)/Math.max(1,x1-x0))*(w-2*p);
-  const sy=v=>(h-p)-((v-y0)/Math.max(1,y1-y0))*(h-2*p);
+    lineSubtitle.textContent = wpmSeries.length ? '(WPM)' : accSeries.length ? '(Accuracy %)' : '(No history yet)';
+    renderLine(lineChart, lineData);
 
-  const g=svg("g");
-  for(let i=0;i<=4;i++){
-    const gy=p+i*((h-2*p)/4);
-    g.appendChild(svg("line",{x1:p,x2:w-p,y1:gy,y2:gy,class:"grid"}));
-  }
-  el.appendChild(g);
+    const tr = Number(stats.typeRushSessions ?? 0);
+    const kc = Number(stats.keyCatchSessions ?? 0);
+    const ss = Number(stats.sequenceSparkSessions ?? 0);
+    const sessionsByWeek = stats.sessionsByWeek ? normalizeSeries(stats.sessionsByWeek) : [];
 
-  const d=rows.map((r,i)=>`${i?'L':'M'} ${sx(new Date(r.date).getTime())} ${sy(r.wpm||0)}`).join(" ");
-  el.appendChild(svg("path",{d,class:"line"}));
+    if (sessionsByWeek.length) {
+        renderBars(barChart, sessionsByWeek.map(p=>String(p.x)), sessionsByWeek.map(p=>Number(p.y)));
+    } else {
+        renderBars(barChart, ['Type Rush','Key Catch','Sequence'], [tr,kc,ss]);
+    }
 
-  rows.forEach(r=>{
-    const cx=sx(new Date(r.date).getTime()), cy=sy(r.wpm||0);
-    el.appendChild(svg("circle",{cx,cy,r:3,class:"dot"}));
-  });
-  return el;
-}
-
-// Bar chart for Accuracy & Errors
-function accErrBars(rows){
-  const w=600,h=220,p=28;
-  const el=svg("svg",{viewBox:`0 0 ${w} ${h}`});
-  if(!rows.length) return el;
-
-  const xs=rows.map(r=>new Date(r.date).getTime());
-  const errs=rows.map(r=>Number(r.errors||0));
-  const x0=Math.min(...xs), x1=Math.max(...xs);
-  const e1=Math.max(1,...errs);
-
-  const sx=t=>p+((t-x0)/Math.max(1,x1-x0))*(w-2*p);
-  const syA=v=>(h-p)-(v*(h-2*p));
-  const syE=v=>(h-p)-((v/e1)*(h-2*p));
-  const bw=Math.max(6,(w-2*p)/Math.max(1,rows.length)*0.6);
-
-  const g=svg("g");
-  for(let i=0;i<=4;i++){
-    const gy=p+i*((h-2*p)/4);
-    g.appendChild(svg("line",{x1:p,x2:w-p,y1:gy,y2:gy,class:"grid"}));
-  }
-  el.appendChild(g);
-
-  rows.forEach(r=>{
-    const xc=sx(new Date(r.date).getTime());
-    const ay=syA(Number(r.accuracy)||0), ah=(h-p)-ay;
-    const ey=syE(Number(r.errors)||0),   eh=(h-p)-ey;
-    el.appendChild(svg("rect",{x:xc-bw-2,y:ay,width:bw,height:Math.max(0,ah),class:"barA"}));
-    el.appendChild(svg("rect",{x:xc+2,y:ey,width:bw,height:Math.max(0,eh),class:"barB"}));
-  });
-  return el;
+    chartsGrid.classList.remove('hidden');
 }
 
