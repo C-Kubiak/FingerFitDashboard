@@ -116,29 +116,49 @@ async function loadUserStats(uid) {
         // The stats are stored as a field in this document
         // If your Firestore structure uses a subcollection (users/{uid}/stats/{docId}),
         // modify this code to use: doc(db, 'users', uid, 'stats', 'yourDocId')
-        const userRef = doc(db, 'users', uid);
-        const userSnap = await getDoc(userRef);
-        
+        const userRef = doc(db, 'users', uid);   // get the user document from Firestore
+        const userSnap = await getDoc(userRef);  // wait until it loads
+
+        // Check if the document actually exists
         if (userSnap.exists()) {
-            const userData = userSnap.data();
-            // Check if stats field exists in the user document
-            // The stats field contains all the gameplay statistics
+            const userData = userSnap.data();  // get the user data from Firestore
+
+            // Check if userData has a stats object
             if (userData.stats && typeof userData.stats === 'object') {
-                displayStats(userData.stats);
-            } else {
-                // No stats found
+                // Try to find a sessions array inside stats
+                const sessions = Array.isArray(userData.stats.sessions) ? userData.stats.sessions : [];
+
+                // Hide the "loading" message
                 loadingMessage.classList.add('hidden');
-                noStatsMessage.classList.remove('hidden');
+
+                // If there are sessions, show the charts
+                if (sessions.length) {
+                    statsContent.classList.remove('hidden');
+                    renderProgress(sessions); // <-- new chart function (shows graphs)
+                } 
+                // If there are no sessions, show normal stats instead
+                else {
+                    statsContent.classList.remove('hidden');
+                    displayStats(userData.stats);
+                }
+            } 
+            // If there is no stats object in Firestore
+            else {
+                loadingMessage.classList.add('hidden');
+                noStatsMessage.classList.remove('hidden');  // show "No stats found"
             }
-        } else {
-            // User document doesn't exist
+        } 
+        // If the user document does not exist
+        else {
             loadingMessage.classList.add('hidden');
             noStatsMessage.classList.remove('hidden');
         }
-    } catch (error) {
+    } 
+    // If something goes wrong while getting the data
+    catch (error) {
         console.error('Error loading stats:', error);
         loadingMessage.classList.add('hidden');
-        showError('Failed to load stats. Please refresh the page.');
+        showError('Failed to load stats. Please refresh the page.'); // show error message
     }
 }
 
@@ -231,5 +251,124 @@ function getErrorMessage(errorCode) {
     };
     
     return errorMessages[errorCode] || 'An error occurred. Please try again.';
+}
+// ===== Charts and table visualizations =====
+
+// Helper to make SVG elements
+function svg(tag, attrs={}) {
+  const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
+  for (const [k,v] of Object.entries(attrs)) el.setAttribute(k,v);
+  return el;
+}
+
+// Format percent display
+function pct(p){ return p==null ? "—" : `${Math.round(Number(p)*100)}%`; }
+
+// Build the charts + table area
+function renderProgress(sessions){
+  statsContent.innerHTML = "";
+  const wrap = document.createElement("div");
+  wrap.style.display = "grid";
+  wrap.style.gap = "10px";
+  statsContent.appendChild(wrap);
+
+  wrap.appendChild(title("WPM Over Time"));
+  wrap.appendChild(wpmLine(sessions));
+
+  wrap.appendChild(title("Accuracy & Errors"));
+  wrap.appendChild(accErrBars(sessions));
+
+  wrap.appendChild(title("Session Details"));
+  wrap.appendChild(tableSimple(sessions));
+}
+
+// Simple section title
+function title(t){
+  const h=document.createElement("h2");
+  h.textContent=t;
+  h.style.fontSize="18px";
+  h.style.color="#333";
+  return h;
+}
+
+// Table of all sessions
+function tableSimple(rows){
+  const t=document.createElement("table");
+  t.className="data-table";
+  t.innerHTML = `
+    <thead><tr><th>Date</th><th>WPM</th><th>Accuracy</th><th>Reaction</th><th>Errors</th></tr></thead>
+    <tbody>${rows.map(r=>`
+      <tr>
+        <td>${r.date??""}</td>
+        <td>${r.wpm??""}</td>
+        <td>${pct(r.accuracy)}</td>
+        <td>${r.reactionMs!=null ? (r.reactionMs/1000).toFixed(1)+'s' : '—'}</td>
+        <td>${r.errors??""}</td>
+      </tr>
+    `).join("")}</tbody>`;
+  return t;
+}
+
+// Line chart for WPM
+function wpmLine(rows){
+  const w=600,h=220,p=28;
+  const el=svg("svg",{viewBox:`0 0 ${w} ${h}`});
+  if(!rows.length) return el;
+
+  const xs=rows.map(r=>new Date(r.date).getTime());
+  const ys=rows.map(r=>Number(r.wpm||0));
+  const x0=Math.min(...xs), x1=Math.max(...xs);
+  const y0=Math.min(...ys), y1=Math.max(...ys);
+  const sx=t=>p+((t-x0)/Math.max(1,x1-x0))*(w-2*p);
+  const sy=v=>(h-p)-((v-y0)/Math.max(1,y1-y0))*(h-2*p);
+
+  const g=svg("g");
+  for(let i=0;i<=4;i++){
+    const gy=p+i*((h-2*p)/4);
+    g.appendChild(svg("line",{x1:p,x2:w-p,y1:gy,y2:gy,class:"grid"}));
+  }
+  el.appendChild(g);
+
+  const d=rows.map((r,i)=>`${i?'L':'M'} ${sx(new Date(r.date).getTime())} ${sy(r.wpm||0)}`).join(" ");
+  el.appendChild(svg("path",{d,class:"line"}));
+
+  rows.forEach(r=>{
+    const cx=sx(new Date(r.date).getTime()), cy=sy(r.wpm||0);
+    el.appendChild(svg("circle",{cx,cy,r:3,class:"dot"}));
+  });
+  return el;
+}
+
+// Bar chart for Accuracy & Errors
+function accErrBars(rows){
+  const w=600,h=220,p=28;
+  const el=svg("svg",{viewBox:`0 0 ${w} ${h}`});
+  if(!rows.length) return el;
+
+  const xs=rows.map(r=>new Date(r.date).getTime());
+  const errs=rows.map(r=>Number(r.errors||0));
+  const x0=Math.min(...xs), x1=Math.max(...xs);
+  const e1=Math.max(1,...errs);
+
+  const sx=t=>p+((t-x0)/Math.max(1,x1-x0))*(w-2*p);
+  const syA=v=>(h-p)-(v*(h-2*p));
+  const syE=v=>(h-p)-((v/e1)*(h-2*p));
+  const bw=Math.max(6,(w-2*p)/Math.max(1,rows.length)*0.6);
+
+  const g=svg("g");
+  for(let i=0;i<=4;i++){
+    const gy=p+i*((h-2*p)/4);
+    g.appendChild(svg("line",{x1:p,x2:w-p,y1:gy,y2:gy,class:"grid"}));
+  }
+  el.appendChild(g);
+
+  rows.forEach(r=>{
+    const xc=sx(new Date(r.date).getTime());
+    const ay=syA(Number(r.accuracy)||0), ah=(h-p)-ay;
+    const ey=syE(Number(r.errors)||0),   eh=(h-p)-ey;
+    el.appendChild(svg("rect",{x:xc-bw-2,y:ay,width:bw,height:Math.max(0,ah),class:"barA"}));
+    el.appendChild(svg("rect",{x:xc+2,y:ey,width:bw,height:Math.max(0,eh),class:"barB"}));
+  });
+  return el;
 }
 
