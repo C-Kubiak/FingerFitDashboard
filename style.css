@@ -214,4 +214,14 @@ input[type="password"]:focus {
         width: 100%;
     }
 }
+svg{width:100%;background:#fff;border:1px solid #ddd;border-radius:6px;margin-top:10px}
+.grid{stroke:#eee;stroke-width:1}
+.line{stroke:#667eea;fill:none;stroke-width:2}
+.dot{fill:#667eea}
+.barA{fill:#4caf50}
+.barB{fill:#f44336}
+
+.data-table{width:100%;border-collapse:collapse;margin-top:10px;background:#fff}
+.data-table th,.data-table td{border:1px solid #ddd;padding:8px;text-align:center;font-size:14px}
+.data-table th{background:#f3f3f3}
 
