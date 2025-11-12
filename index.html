@@ -12,6 +12,7 @@
 </head>
 <body>
     <div class="container">
+
         <!-- Login Screen -->
         <div id="loginScreen" class="card">
             <h1>FingerFit Dashboard</h1>
@@ -38,7 +39,9 @@
         <div id="dashboardScreen" class="card hidden">
             <div class="dashboard-header">
                 <h1>Your Stats</h1>
-                <button id="logoutBtn" class="btn btn-secondary">Logout</button>
+                <div class="header-actions">
+                    <button id="logoutBtn" class="btn btn-secondary">Logout</button>
+                </div>
             </div>
             
             <div class="user-info">
@@ -47,7 +50,47 @@
             
             <div id="statsContainer">
                 <div id="loadingMessage" class="loading">Loading stats...</div>
-                <div id="statsContent" class="stats-grid hidden"></div>
+
+                <!-- concise KPI strip -->
+                <div id="kpiRow" class="kpi-row hidden">
+                    <div class="kpi">
+                        <div class="kpi-label">Average WPM</div>
+                        <div id="kpiAvgWpm" class="kpi-value">—</div>
+                    </div>
+                    <div class="kpi">
+                        <div class="kpi-label">Accuracy</div>
+                        <div id="kpiAcc" class="kpi-value">—</div>
+                    </div>
+                    <div class="kpi">
+                        <div class="kpi-label">Total Games</div>
+                        <div id="kpiGames" class="kpi-value">—</div>
+                    </div>
+                    <div class="kpi">
+                        <div class="kpi-label">Last Played</div>
+                        <div id="kpiLast" class="kpi-value small">—</div>
+                    </div>
+                </div>
+
+                <!-- readable charts -->
+                <div id="chartsGrid" class="charts-grid hidden">
+                    <div class="chart-card">
+                        <div class="chart-title">
+                            Progress Over Time <span class="chart-subtitle" id="lineSubtitle">(WPM)</span>
+                        </div>
+                        <div id="lineChart" class="chart" role="img" aria-label="Progress over time"></div>
+                    </div>
+
+                    <div class="chart-card">
+                        <div class="chart-title">Sessions</div>
+                        <div id="barChart" class="chart" role="img" aria-label="Sessions by game"></div>
+                    </div>
+                </div>
+
+                <details id="allFieldsWrap" class="all-fields hidden">
+                    <summary>Show all fields</summary>
+                    <div id="statsContent" class="stats-grid"></div>
+                </details>
+
                 <div id="noStatsMessage" class="no-stats hidden">No stats found.</div>
             </div>
         </div>
@@ -56,5 +99,7 @@
     <!-- Firebase SDKs -->
     <script type="module" src="script.js"></script>
 </body>
+</html>
+
 </html>
 
