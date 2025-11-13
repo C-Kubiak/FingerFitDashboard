@@ -58,3 +58,5 @@ This dashboard implements industry-standard security practices to protect your d
 - You can only access your own statistics
 - Content Security Policy prevents malicious code execution
 
+  (test)
+
