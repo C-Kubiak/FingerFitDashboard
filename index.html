@@ -17,20 +17,20 @@
         <div id="loginScreen" class="card">
             <h1>FingerFit Dashboard</h1>
             <p class="subtitle">Sign in to view your gameplay stats</p>
-            
+
             <form id="loginForm">
                 <div class="form-group">
                     <label for="email">Email</label>
                     <input type="email" id="email" name="email" required autocomplete="email">
                 </div>
-                
+
                 <div class="form-group">
                     <label for="password">Password</label>
                     <input type="password" id="password" name="password" required autocomplete="current-password">
                 </div>
-                
+
                 <button type="submit" id="loginBtn" class="btn btn-primary">Sign In</button>
-                
+
                 <div id="loginError" class="error-message"></div>
             </form>
         </div>
@@ -43,15 +43,15 @@
                     <button id="logoutBtn" class="btn btn-secondary">Logout</button>
                 </div>
             </div>
-            
+
             <div class="user-info">
                 <p>Logged in as: <strong id="userEmail"></strong></p>
             </div>
-            
+
             <div id="statsContainer">
                 <div id="loadingMessage" class="loading">Loading stats...</div>
 
-                <!-- concise KPI strip -->
+                <!-- KPI strip -->
                 <div id="kpiRow" class="kpi-row hidden">
                     <div class="kpi">
                         <div class="kpi-label">Average WPM</div>
@@ -71,21 +71,67 @@
                     </div>
                 </div>
 
-                <!-- readable charts -->
+                <!-- Charts grid -->
                 <div id="chartsGrid" class="charts-grid hidden">
-                    <div class="chart-card">
-                        <div class="chart-title">
-                            Progress Over Time <span class="chart-subtitle" id="lineSubtitle">(WPM)</span>
+
+                    <!-- Quality overview -->
+                    <div class="chart-card hidden" id="qualityCard">
+                        <div class="chart-title">Quality Overview</div>
+                        <div class="chart-subtitle">
+                            Accuracy, mistakes per game, and keystrokes per game
                         </div>
-                        <div id="lineChart" class="chart" role="img" aria-label="Progress over time"></div>
+                        <div id="qualityChart" class="chart" role="img"
+                             aria-label="Accuracy, mistakes, and key presses per game"></div>
                     </div>
 
-                    <div class="chart-card">
-                        <div class="chart-title">Sessions</div>
-                        <div id="barChart" class="chart" role="img" aria-label="Sessions by game"></div>
+                    <!-- Accuracy donut -->
+                    <div class="chart-card hidden" id="accuracyCompareCard">
+                        <div class="chart-title">Accuracy (%): Best vs Average</div>
+                        <div id="accuracyCompareChart" class="chart" role="img"
+                             aria-label="Best vs average accuracy"></div>
                     </div>
+
+                    <!-- Speed (WPM) line chart -->
+                    <div class="chart-card hidden" id="reactionCard">
+                        <div class="chart-title">
+                            Speed (WPM) Over Time
+                            <span class="chart-subtitle">Average vs best typing speed</span>
+                        </div>
+                        <div id="reactionChart" class="chart" role="img"
+                             aria-label="Typing speed over time"></div>
+                    </div>
+
+                    <!-- Sessions by game -->
+                    <div class="chart-card hidden" id="sessionsCard">
+                        <div class="chart-title">Sessions by Game</div>
+                        <div id="sessionsChart" class="chart" role="img"
+                             aria-label="Sessions by game type"></div>
+                    </div>
+
+                    <!-- Type Rush overview -->
+                    <div class="chart-card hidden" id="typeRushCard">
+                        <div class="chart-title">Type Rush Overview</div>
+                        <div id="typeRushChart" class="chart" role="img"
+                             aria-label="Type Rush sessions and speed"></div>
+                    </div>
+
+                    <!-- Key Catch overview -->
+                    <div class="chart-card hidden" id="keyCatchCard">
+                        <div class="chart-title">Key Catch Overview</div>
+                        <div id="keyCatchChart" class="chart" role="img"
+                             aria-label="Key Catch sessions and best score"></div>
+                    </div>
+
+                    <!-- Sequence Spark overview -->
+                    <div class="chart-card hidden" id="sequenceSparkCard">
+                        <div class="chart-title">Sequence Spark Overview</div>
+                        <div id="sequenceSparkChart" class="chart" role="img"
+                             aria-label="Sequence Spark sessions and performance"></div>
+                    </div>
+
                 </div>
 
+                <!-- Grouped stats section -->
                 <details id="allFieldsWrap" class="all-fields hidden">
                     <summary>Show all fields</summary>
                     <div id="statsContent" class="stats-grid"></div>
@@ -100,6 +146,3 @@
     <script type="module" src="script.js"></script>
 </body>
 </html>
-
-</html>
-
