@@ -1,4 +1,8 @@
-* { margin: 0; padding: 0; box-sizing: border-box; }
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
 
 :root{
   --bg-grad-a:#667eea; --bg-grad-b:#764ba2;
@@ -80,15 +84,63 @@ input[type="email"]:focus, input[type="password"]:focus { outline: none; border-
     background: var(--card); border: 1px solid var(--card-bd); border-radius: 14px; padding: 16px;
     box-shadow: 0 6px 22px rgba(0,0,0,0.08);
 }
-.chart-title { font-size: 16px; font-weight: 900; color: var(--text); margin-bottom: 8px; }
-.chart-subtitle { color: var(--muted); font-weight: 800; margin-left: 6px; font-size: 12px; }
+.chart-title { font-size: 16px; font-weight: 900; color: var(--text); margin-bottom: 4px; }
+.chart-subtitle { color: var(--muted); font-weight: 800; margin-left: 1px; font-size: 12px; margin-bottom: 4px; }
 .chart { width: 100%; height: 240px; display: block; }
 .chart svg { width: 100%; height: 100%; display: block; }
 .chart-empty { color: var(--muted); font-size: 14px; text-align: center; padding: 48px 0; }
 
 .all-fields { margin-top: 14px; }
 .all-fields summary { cursor: pointer; font-weight: 900; color: var(--muted-2); margin-bottom: 8px; font-size: 18px; }
-.stats-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+
+.stats-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.stat-group {
+    background: var(--shade);
+    border-radius: 12px;
+    border: 1px solid var(--card-bd);
+    padding: 12px 14px;
+}
+
+.stat-group-title {
+    font-size: 13px;
+    font-weight: 900;
+    color: var(--muted-2);
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    margin-bottom: 6px;
+}
+
+.stat-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.stat-table tr:nth-child(even) {
+    background: #f1f5f9;
+}
+
+.stat-label-cell,
+.stat-value-cell {
+    padding: 6px 8px;
+}
+
+.stat-label-cell {
+    color: var(--muted);
+    font-weight: 600;
+}
+
+.stat-value-cell {
+    text-align: right;
+    color: var(--text);
+    font-weight: 900;
+}
+
 .stat-item { padding: 12px; background: var(--shade); border-radius: 12px; border-left: 5px solid var(--brand); }
 .stat-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4px; font-weight: 900; }
 .stat-value { font-size: 20px; color: var(--text); font-weight: 900; }
